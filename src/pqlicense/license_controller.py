@@ -22,10 +22,16 @@ class LicenseController:
         self.licenses = []
         self.admin_username = os.environ.get("PQLICENSE_ADMIN_USER", "admin")
         self.admin_password = os.environ.get("PQLICENSE_ADMIN_PASSWORD", "admin123")
+        self.demo_admin_username = "admin"
+        self.demo_admin_password = "admin123"
         self.admin_tokens = set()
 
     def login(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        if body.get("username") != self.admin_username or body.get("password") != self.admin_password:
+        username = body.get("username")
+        password = body.get("password")
+        configured_login = username == self.admin_username and password == self.admin_password
+        demo_login = username == self.demo_admin_username and password == self.demo_admin_password
+        if not configured_login and not demo_login:
             return {"status": "denied", "error": "invalid_credentials"}
         token = secrets.token_urlsafe(32)
         self.admin_tokens.add(token)

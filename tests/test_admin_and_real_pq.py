@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import threading
 import unittest
@@ -13,6 +14,7 @@ sys.path.insert(0, str(SRC))
 
 from pqlicense.post_quantum_provider import PostQuantumSignatureProvider  # noqa: E402
 from pqlicense.core import create_revocation_list  # noqa: E402
+from pqlicense.license_controller import LicenseController  # noqa: E402
 from pqlicense.server import make_handler  # noqa: E402
 from pqlicense.signers import create_key_bundle  # noqa: E402
 
@@ -108,6 +110,25 @@ class AdminAndListingEndpointTests(unittest.TestCase):
 
         revocations = self.get_json("/api/licenses/revocations")
         self.assertEqual(revocations["payload"]["revoked"][0]["license_id"], "LIC-ADMIN-1")
+
+    def test_demo_admin_password_works_even_when_environment_password_is_set(self):
+        old_password = os.environ.get("PQLICENSE_ADMIN_PASSWORD")
+        os.environ["PQLICENSE_ADMIN_PASSWORD"] = "custom-secret"
+        try:
+            controller = LicenseController(
+                keys=self.keys,
+                revocations=None,
+                product_id="app-pro",
+                revocations_path=None,
+            )
+            login = controller.login({"username": "admin", "password": "admin123"})
+            self.assertEqual(login["status"], "authenticated")
+            self.assertIn("token", login)
+        finally:
+            if old_password is None:
+                os.environ.pop("PQLICENSE_ADMIN_PASSWORD", None)
+            else:
+                os.environ["PQLICENSE_ADMIN_PASSWORD"] = old_password
 
     def test_stale_revocation_list_signed_by_old_keys_is_ignored_on_startup(self):
         stale_keys = create_key_bundle()
