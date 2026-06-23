@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sistema de Licencias Postcuantico</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Reto Mayo - Julio 2026</p>
+          <h1>Sistema de Licencias Postcuantico</h1>
+        </div>
+        <div class="status-strip">
+          <span id="classicStatus">Ed25519</span>
+          <span id="pqStatus">ML-DSA-65-DEMO</span>
+          <span id="revokedStatus">0 revocadas</span>
+        </div>
+      </section>
+
+      <section class="panel admin-panel">
+        <div>
+          <h2>Acceso administrador</h2>
+          <p>Necesario para generar, revocar, listar licencias y regenerar claves. Demo: admin / admin123.</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label>
+            Usuario
+            <input name="username" value="admin" autocomplete="username">
+          </label>
+          <label>
+            Clave
+            <input name="password" type="password" placeholder="admin123" autocomplete="current-password">
+          </label>
+          <button class="primary" type="submit">Entrar</button>
+          <span id="adminStatus" class="badge neutral">Sin sesion</span>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel controls">
+          <div class="panel-header">
+            <h2>Crear licencia</h2>
+            <button id="resetKeys" class="secondary" type="button">Regenerar claves</button>
+          </div>
+
+          <form id="licenseForm" class="form-grid">
+            <label>
+              Licencia
+              <input name="license_id" value="LIC-001" required>
+            </label>
+            <label>
+              Cliente
+              <input name="customer_id" value="cliente-demo" required>
+            </label>
+            <label>
+              Producto
+              <input name="product_id" value="app-pro" required>
+            </label>
+            <label>
+              Plan
+              <input name="plan" value="professional" required>
+            </label>
+            <label>
+              Modo de firma
+              <select name="validation_mode">
+                <option value="hybrid" selected>Hibrido recomendado</option>
+                <option value="classical_only">Clasico legado</option>
+                <option value="post_quantum_only">Postcuantico futuro</option>
+              </select>
+            </label>
+            <label>
+              Dias
+              <input name="days" type="number" min="1" value="365" required>
+            </label>
+            <label>
+              Dispositivos
+              <input name="device_limit" type="number" min="1" value="3" required>
+            </label>
+            <label>
+              Funciones
+              <input name="features" value="offline, reports">
+            </label>
+            <label class="span-2">
+              Huella de dispositivo
+              <input name="device_fingerprint" value="device-demo-hash">
+            </label>
+            <label class="span-2">
+              Link valido
+              <input name="redirect_url" value="https://app.example.com/start" required>
+            </label>
+            <label class="span-2">
+              Link de error
+              <input name="error_url" value="https://app.example.com/license-error" required>
+            </label>
+            <button class="primary span-2" type="submit">Generar licencia firmada</button>
+          </form>
+        </aside>
+
+        <section class="panel result-panel">
+          <div class="panel-header">
+            <h2>Operacion</h2>
+            <div class="button-row">
+              <button id="validateLicense" class="secondary" type="button">Validar</button>
+              <button id="revokeLicense" class="danger" type="button">Revocar</button>
+            </div>
+          </div>
+
+          <div id="resultBadge" class="badge neutral">Sin licencia generada</div>
+          <div class="redirect-box">
+            <span>Redireccion</span>
+            <a id="redirectUrl" href="#" target="_blank" rel="noreferrer">-</a>
+          </div>
+          <div class="verification-grid" aria-label="Detalles de verificacion">
+            <h3>Detalles de verificacion</h3>
+            <dl>
+              <div><dt>Firma clasica</dt><dd id="classicCheck">-</dd></div>
+              <div><dt>Firma postcuantica</dt><dd id="pqCheck">-</dd></div>
+              <div><dt>Modo requerido</dt><dd id="modeCheck">-</dd></div>
+              <div><dt>Resultado</dt><dd id="statusCheck">-</dd></div>
+            </dl>
+          </div>
+
+          <div class="json-tools">
+            <h3>Licencia JSON</h3>
+            <textarea id="licenseJson" spellcheck="false" placeholder="Genera una licencia o pega aqui una licencia existente"></textarea>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel footer-panel">
+        <div>
+          <h2>Flujo cubierto</h2>
+          <p>Generacion, validacion online/offline, revocacion firmada, modos hibridos y redireccion parametrica segun estado.</p>
+        </div>
+        <pre id="eventLog">Listo para crear licencias.</pre>
+      </section>
+
+      <section class="tables-grid">
+        <div class="panel table-panel">
+          <div class="panel-header">
+            <h2>Licencias emitidas</h2>
+            <button id="refreshLicenses" class="secondary" type="button">Actualizar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Licencia</th>
+                  <th>Cliente</th>
+                  <th>Plan</th>
+                  <th>Modo</th>
+                  <th>Vence</th>
+                </tr>
+              </thead>
+              <tbody id="licenseRows">
+                <tr><td colspan="5">Inicia sesion para ver licencias.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-header">
+            <h2>Revocaciones</h2>
+            <button id="refreshRevocations" class="secondary" type="button">Actualizar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Licencia</th>
+                  <th>Motivo</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody id="revocationRows">
+                <tr><td colspan="3">Sin revocaciones.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
