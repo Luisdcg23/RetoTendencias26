@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -7,41 +7,128 @@
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div style="max-width:900px;margin:0 auto;padding:32px 24px;">
-    <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <img src="/logo.png" alt="DigiPermit" style="height:36px;" />
-        <div>
-          <h1 style="margin:0;font-size:20px;">Hola, <span id="welcomeName">usuario</span></h1>
-          <p style="margin:0;color:var(--dp-fg-4);font-size:13px;">Panel de licencias — cuenta individual</p>
+
+  <header class="user-topbar">
+    <div class="user-topbar-brand">
+      <img src="/logo.png" alt="DigiPermit">
+      <div>
+        <div class="user-topbar-title">Hola, <span id="welcomeName">usuario</span></div>
+        <div class="user-topbar-sub">Portal del cliente</div>
+      </div>
+    </div>
+    <div class="user-topbar-right">
+      <span class="session-chip"><span class="dot"></span>Sesión activa</span>
+      <button class="secondary" id="logoutButton" style="padding:6px 14px;font-size:12px;min-height:unset;">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <!-- ═══ Dashboard ═══ -->
+  <div class="user-page active" id="userpage-dashboard">
+    <div class="user-page-inner">
+      <div class="user-page-header">
+        <h1>Mis licencias</h1>
+        <p>Consulta, valida y administra las licencias asociadas a tu cuenta.</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="stat-icon cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><span class="stat-badge cyan">Activas</span></div>
+          <div class="stat-value" id="uStatActivas">—</div>
+          <div class="stat-label">Licencias activas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="stat-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><span class="stat-badge amber">Vencidas</span></div>
+          <div class="stat-value" id="uStatVencidas">—</div>
+          <div class="stat-label">Licencias vencidas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="stat-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div><span class="stat-badge red">Revocadas</span></div>
+          <div class="stat-value" id="uStatRevocadas">—</div>
+          <div class="stat-label">Licencias revocadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="stat-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><span class="stat-badge amber">Próximo</span></div>
+          <div class="stat-value" id="uStatProximo" style="font-size:16px;">—</div>
+          <div class="stat-label">Próximo vencimiento</div>
         </div>
       </div>
-      <button id="logoutButton" class="btn" style="padding:8px 16px;border-radius:8px;">Cerrar sesión</button>
-    </header>
 
-    <section style="background:var(--dp-bg-2, rgba(255,255,255,0.03));border-radius:12px;padding:24px;margin-bottom:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h2 style="margin:0;font-size:16px;">Mis licencias</h2>
-        <button id="refreshMyLicenses" class="btn" style="padding:6px 14px;border-radius:8px;font-size:13px;" onclick="loadMyLicenses()">Actualizar</button>
+      <p class="section-title">Accesos rápidos</p>
+      <div class="quick-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <button class="quick-card" id="quickValidar">
+          <div class="quick-card-body">
+            <div class="quick-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <div class="quick-title">Validar una licencia</div>
+            <div class="quick-sub">Revisa el estado y las firmas de tus licencias.</div>
+          </div>
+          <div class="quick-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </button>
+        <a class="quick-card" href="mailto:soporte@digipermit.com" style="text-decoration:none;">
+          <div class="quick-card-body">
+            <div class="quick-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+            <div class="quick-title">Contactar soporte</div>
+            <div class="quick-sub">¿Problemas con tu licencia? Escríbenos.</div>
+          </div>
+          <div class="quick-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
       </div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="text-align:left;color:var(--dp-fg-4);font-size:12px;">
-            <th style="padding:8px;">Código de licencia</th>
-            <th style="padding:8px;">Emitida</th>
-            <th style="padding:8px;">Expira</th>
-            <th style="padding:8px;">Estado</th>
-            <th style="padding:8px;">Acción</th>
-          </tr>
-        </thead>
-        <tbody id="myLicenseRows">
-          <tr><td colspan="5" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </section>
 
-    <section id="validationResult" style="display:none;background:var(--dp-bg-2, rgba(255,255,255,0.03));border-radius:12px;padding:20px;">
-    </section>
+      <p class="section-title" id="myLicensesAnchor">Mis licencias</p>
+      <div class="panel" style="overflow:hidden;">
+        <table>
+          <thead>
+            <tr><th>Código</th><th>Emitida</th><th>Expira</th><th>Estado</th><th>Acción</th></tr>
+          </thead>
+          <tbody id="myLicenseRows">
+            <tr><td colspan="5" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Activar licencia ═══ -->
+  <div class="user-page" id="userpage-activar">
+    <div class="user-page-inner">
+      <button class="user-back-link" id="backFromActivar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver a mis licencias
+      </button>
+      <div class="panel activation-card">
+        <div style="text-align:center;">
+          <span class="chip active" style="margin-bottom:14px;display:inline-flex;">Activación de licencia</span>
+          <h1 style="margin-top:14px;">Activa tu licencia</h1>
+          <p style="color:var(--dp-fg-4);font-size:13px;margin-top:6px;">Ingresa el código que recibiste al adquirir tu plan.</p>
+        </div>
+        <form id="activateForm">
+          <label class="field-label" for="activateCode">Código de licencia</label>
+          <input id="activateCode" name="license_id" class="code-input-lg" placeholder="LIC-XXXXXX-XXXXXX" autocomplete="off" spellcheck="false" required>
+          <p class="activation-note">Formato: LIC-XXXXXX-XXXXXX</p>
+
+          <div class="fp-field-wrap" style="margin-top:16px;">
+            <label class="field-label">Huella de dispositivo</label>
+            <input id="devicePreview" readonly>
+            <span class="fp-detected-chip"><span class="dot"></span>Detectado</span>
+          </div>
+
+          <div id="activateError" style="display:none;margin-top:16px;" class="activation-error">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span id="activateErrorText">Error</span>
+          </div>
+
+          <button type="submit" class="primary" id="activateSubmit" style="width:100%;margin-top:20px;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Activar licencia
+          </button>
+          <p class="support-link" style="margin-top:4px;">¿Problemas con tu licencia? <a href="mailto:soporte@digipermit.com">Contactar soporte</a></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Resultado (válida / vencida / revocada / inválida) ═══ -->
+  <div class="user-page" id="userpage-resultado">
+    <div class="result-shell" id="resultShell"></div>
   </div>
 
   <script src="/theme.js"></script>

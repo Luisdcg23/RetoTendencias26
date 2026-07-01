@@ -169,19 +169,6 @@
               </button>
             </div>
           </div>
-          <div>
-            <p class="nav-group-label">Vista de usuario</p>
-            <div class="nav-group">
-              <button class="nav-item" data-page="acceso-concedido">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                Acceso concedido
-              </button>
-              <button class="nav-item" data-page="acceso-denegado">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                Acceso denegado
-              </button>
-            </div>
-          </div>
         </nav>
         <div class="sidebar-bottom">
           <div class="sidebar-user">
@@ -559,55 +546,6 @@
           </div>
         </div>
 
-        <!-- Acceso concedido -->
-        <div class="page" id="page-acceso-concedido">
-          <div class="user-screen">
-            <div class="user-screen-topbar">
-              <button class="user-screen-back" data-page="dashboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Volver al panel</button>
-              <span class="user-screen-tag">Vista de usuario final</span>
-            </div>
-            <div class="user-screen-body">
-              <img src="/logo.png" alt="DigiPermit" class="user-screen-logo">
-              <div class="status-ring">
-                <div class="status-ring-outer" style="background:rgba(34,211,238,0.08);">
-                  <div class="status-ring-inner" style="background:rgba(34,211,238,0.12);">
-                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  </div>
-                </div>
-                <div class="status-ring-border" style="border-color:rgba(34,211,238,0.2);"></div>
-              </div>
-              <h1 class="status-title" style="color:var(--cyan);">Licencia válida</h1>
-              <p class="status-sub">Tu licencia ha sido verificada correctamente. Puedes continuar usando el servicio.</p>
-              <div class="status-actions">
-                <button class="primary" style="display:flex;align-items:center;gap:8px;background:var(--brand-gradient);">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  Continuar
-                </button>
-              </div>
-              <div class="status-line" style="background:linear-gradient(90deg,transparent,var(--cyan) 50%,transparent);"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Acceso denegado -->
-        <div class="page" id="page-acceso-denegado">
-          <div class="user-screen">
-            <div class="user-screen-topbar">
-              <button class="user-screen-back" data-page="dashboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Volver al panel</button>
-              <span class="user-screen-tag">Vista de usuario final</span>
-            </div>
-            <div class="user-screen-body">
-              <img src="/logo.png" alt="DigiPermit" class="user-screen-logo">
-              <div class="reason-tabs">
-                <button class="reason-tab active" data-reason="expired">Vencida</button>
-                <button class="reason-tab" data-reason="revoked">Revocada</button>
-                <button class="reason-tab" data-reason="invalid">Inválida</button>
-              </div>
-              <div id="deniedContent" style="display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;"></div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -621,8 +559,7 @@
       const pageTitles = {
         dashboard: 'Dashboard', crear: 'Crear licencia', licencias: 'Licencias emitidas',
         validar: 'Validar / Revocar', dispositivos: 'Dispositivos', cancelaciones: 'Cancelaciones',
-        revocacion: 'Revocación offline', historial: 'Historial',
-        'acceso-concedido': 'Acceso concedido', 'acceso-denegado': 'Acceso denegado'
+        revocacion: 'Revocación offline', historial: 'Historial'
       };
 
       function navTo(page) {
@@ -637,46 +574,10 @@
         if (page === 'historial') loadHistorial();
         if (page === 'cancelaciones') loadCancelaciones();
         if (page === 'licencias') loadLicenses();
-        if (page === 'acceso-denegado') renderDenied('expired');
       }
 
       document.querySelectorAll('[data-page]').forEach(btn => {
         btn.addEventListener('click', () => navTo(btn.dataset.page));
-      });
-
-      const DENIED = {
-        expired: { title: 'Tu licencia ha vencido', sub: 'El período de validez de tu licencia expiró. Renuévala para continuar usando el servicio.', color: 'var(--amber)', bg: 'rgba(251,191,36,0.08)', bg2: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.2)', line: 'var(--amber)', primary: 'Renovar licencia', secondary: 'Contactar soporte' },
-        revoked: { title: 'Tu licencia fue revocada', sub: 'Esta licencia ha sido revocada por el administrador del sistema. Contacta a soporte para más información.', color: 'var(--red)', bg: 'rgba(248,113,113,0.08)', bg2: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)', line: 'var(--red)', primary: 'Contactar soporte', secondary: null },
-        invalid: { title: 'Licencia inválida', sub: 'No se pudo verificar esta licencia. Verifica el código ingresado o contacta a soporte.', color: 'var(--amber)', bg: 'rgba(251,146,60,0.08)', bg2: 'rgba(251,146,60,0.12)', border: 'rgba(251,146,60,0.2)', line: 'rgba(251,146,60,1)', primary: 'Contactar soporte', secondary: 'Reintentar' }
-      };
-
-      function renderDenied(reason) {
-        const c = DENIED[reason];
-        document.querySelectorAll('.reason-tab').forEach(t => t.classList.toggle('active', t.dataset.reason === reason));
-        document.getElementById('deniedContent').innerHTML = `
-          <div class="status-ring">
-            <div class="status-ring-outer" style="background:${c.bg};width:112px;height:112px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-              <div class="status-ring-inner" style="background:${c.bg2};width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="${c.color}" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-            </div>
-            <div class="status-ring-border" style="border-color:${c.border};"></div>
-          </div>
-          <h1 class="status-title" style="color:${c.color};">${c.title}</h1>
-          <p class="status-sub">${c.sub}</p>
-          <div class="status-actions">
-            <button class="primary" style="display:flex;align-items:center;gap:8px;background:var(--brand-gradient);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              ${c.primary}
-            </button>
-            ${c.secondary ? `<button class="secondary" style="display:flex;align-items:center;gap:8px;">${c.secondary}</button>` : ''}
-          </div>
-          <div class="status-line" style="background:linear-gradient(90deg,transparent,${c.line} 50%,transparent);margin-top:40px;"></div>
-        `;
-      }
-
-      document.querySelectorAll('.reason-tab').forEach(tab => {
-        tab.addEventListener('click', () => renderDenied(tab.dataset.reason));
       });
     </script>
   </body>

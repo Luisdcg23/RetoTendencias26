@@ -125,6 +125,27 @@ def make_handler(
                 _json_response(self, 200, result)
                 return
 
+            if self.path == "/api/my-licenses/activate":
+                token = _bearer_token(self)
+                result = controller.activate_license(
+                    token, body.get("license_id", ""), body.get("device_fingerprint", "")
+                )
+                error = result.get("error")
+                if error == "auth_required":
+                    _json_response(self, 401, result)
+                    return
+                if error == "license_owned_by_other":
+                    _json_response(self, 403, result)
+                    return
+                if error == "license_not_found":
+                    _json_response(self, 404, result)
+                    return
+                if error:
+                    _json_response(self, 400, result)
+                    return
+                _json_response(self, 200, result)
+                return
+
             if self.path in ("/api/reset-keys", "/api/licenses/reset-keys"):
                 if not _require_admin(self, controller):
                     return

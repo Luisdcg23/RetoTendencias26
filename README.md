@@ -1,8 +1,29 @@
 # Sistema de Validacion de Licencias Postcuantico
 
-Prototipo en Python para el reto "Sistema de Validacion PostCuantico". Implementa generacion de licencias, validacion offline/online, revocacion manual (por admin y por el propio usuario), y redireccion segun estado de la licencia. Incluye persistencia real en PostgreSQL, autenticacion con JWT/bcrypt, y control de acceso por rol.
+Prototipo en Python para el reto "Sistema de Validacion PostCuantico". Implementa generacion de licencias, validacion offline/online, revocacion manual (por admin y por el propio usuario), activacion de licencias por parte del cliente final, y redireccion segun estado de la licencia. Incluye persistencia real en PostgreSQL, autenticacion con JWT/bcrypt, control de acceso por rol, y paneles separados para administrador y cliente final.
 
-## Enfoque
+## Stack tecnologico
+
+**Backend**
+- Python 3.10+
+- `http.server` (servidor HTTP nativo, sin framework externo)
+- PostgreSQL 18 — persistencia real de usuarios, licencias, historial, cancelaciones y revocaciones
+- SQLAlchemy — capa de acceso a datos (`db/repository.py`, `db/connection.py`)
+- `bcrypt` — hash de contrasenas
+- `PyJWT` — autenticacion basada en tokens con expiracion
+- `cryptography` — firma clasica Ed25519
+- `pqcrypto` — firma postcuantica ML-DSA-65 (Dilithium), con fallback documentado si la libreria no esta disponible
+
+**Frontend**
+- HTML, CSS y JavaScript vanilla (sin frameworks ni bundlers)
+- Arquitectura de paginas tipo SPA ligera: cada panel (`/app` para admin, `/user` para cliente) es un unico HTML con secciones que se muestran/ocultan por JavaScript (`.page`/`.page.active` en admin, `.user-page`/`.user-page.active` en usuario)
+- Sistema de diseño propio "DigiPermit": paleta oscura con variables CSS (`--dp-*`, `--cyan`, `--amber`, `--red`), tipografia Poppins (cuerpo) y Montserrat (titulos)
+- `sessionStorage` para el token JWT y el rol de la sesion; `localStorage` para el tema (claro/oscuro) y la huella de dispositivo del cliente
+
+**Diseno de interfaz**
+- Las pantallas de usuario final (activacion, resultados de validacion) fueron disenadas primero en Figma/Figma Make y luego traducidas manualmente a HTML/CSS/JS vanilla para mantener consistencia con el resto del proyecto, sin introducir React ni Vite
+
+## Enfoque criptografico
 
 El sistema usa una arquitectura de firma hibrida:
 
@@ -28,6 +49,8 @@ La computacion cuantica, con algoritmos como Shor, amenaza criptografia clasica 
 
 Por eso la validacion de licencias permanece como software clasico y no requiere Qiskit, Q#, Azure Quantum ni simuladores cuanticos.
 
+La validacion online se demuestra en el panel web (admin y cliente). La validacion offline se demuestra por linea de comandos (`run.py validate` con claves publicas y CRL locales) y esta cubierta por los tests automatizados, ya que la logica de `OfflineValidationService` no depende de ningun servidor externo para verificar firmas, expiracion ni revocacion.
+
 ## Persistencia y autenticacion
 
 El sistema usa **PostgreSQL 18** (base `reto_tendencias`) como almacenamiento real, con 7 tablas relacionadas:
@@ -48,10 +71,13 @@ Si PostgreSQL no esta disponible al arrancar, el sistema cae a un modo de almace
 
 ## Roles y vistas
 
-El sistema tiene dos vistas separadas segun el rol del usuario autenticado:
+El sistema tiene dos paneles completamente separados segun el rol del usuario autenticado:
 
-- **Admin** (`/app`): panel completo — generar licencias, validar, revocar, ver historial de validaciones, cancelaciones, y descargar la lista de revocacion (CRL).
-- **Individual / Empresa** (`/user`): panel de cliente final — ver solo las licencias propias, validarlas, y revocarlas.
+- **Admin** (`/app`): panel completo — generar licencias, validar, revocar, ver historial de validaciones, cancelaciones, y descargar la lista de revocacion (CRL). Ya no incluye las pantallas genericas de "Acceso concedido/denegado" que originalmente vivian ahi como mockups de la vista de usuario; esas fueron reemplazadas por el panel de cliente real descrito abajo.
+- **Individual / Empresa** (`/user`): panel de cliente final con su propio diseño, header y flujo de navegacion:
+  - **Dashboard**: tarjetas resumen (licencias activas, vencidas, revocadas y proximo vencimiento — calculadas dinamicamente comparando `expires_at` contra la fecha actual, no solo el estado guardado en la base de datos), tabla de licencias propias con acciones de Validar y Revocar, y accesos rapidos (Validar una licencia, Contactar soporte).
+  - **Activar licencia**: pantalla donde el cliente ingresa el codigo que recibio al comprar una licencia, mas la huella de su dispositivo (generada y persistida en `localStorage`); el sistema liga la licencia a su cuenta si estaba libre, registra el dispositivo, y la valida. Esta pantalla sigue existiendo en el codigo (`#userpage-activar` en `user.html`, funcion `activate_license` en el backend) pero por ahora no tiene un acceso visible desde la interfaz, a peticion del equipo.
+  - **Resultado**: pantalla de resultado unificada que se muestra tanto al activar como al validar una licencia desde la tabla, con una variante visual por cada estado (valida, vencida, revocada, invalida/no encontrada, en uso por otra cuenta).
 
 El login (`POST /api/admin/login`, a pesar del nombre historico, autentica cualquier rol) devuelve el `rol` del usuario junto con el token; el frontend usa ese valor para redirigir a `/app` o `/user` segun corresponda. Si un usuario no-admin intenta acceder a `/app` (o a cualquier endpoint que requiera admin), es redirigido automaticamente a `/user`.
 
@@ -79,7 +105,7 @@ LicenseController
 
 Modulos principales:
 
-- `src/pqlicense/license_controller.py`: endpoints HTTP, aliases de compatibilidad, y logica de autorizacion por rol/duenio (`is_admin_token`, `identify_token`, `my_licenses`, `validate_owned_license`, `revoke_owned_license`).
+- `src/pqlicense/license_controller.py`: endpoints HTTP, aliases de compatibilidad, y logica de autorizacion por rol/duenio (`is_admin_token`, `identify_token`, `my_licenses`, `validate_owned_license`, `revoke_owned_license`, `activate_license`).
 - `src/pqlicense/license_service.py`: creacion de payloads `pqlicense/v2`.
 - `src/pqlicense/crypto_service.py`: orquestacion de firmas.
 - `src/pqlicense/classical_provider.py`: provider Ed25519.
@@ -93,9 +119,13 @@ Modulos principales:
 - `src/pqlicense/cli.py`: comandos de consola.
 - `src/pqlicense/server.py`: API HTTP online, rutas estaticas (`/app`, `/user`, `/login`) y endpoints REST.
 - `db/connection.py`: pool de conexion SQLAlchemy a PostgreSQL.
-- `db/repository.py`: capa de acceso a datos (licencias, historial, cancelaciones, revocaciones, dispositivos).
+- `db/repository.py`: capa de acceso a datos (licencias, historial, cancelaciones, revocaciones, dispositivos, cambio de dueno).
 - `db/auth.py`: registro, login, hash de contrasenas y JWT.
 - `db/schema.sql`: DDL de las 7 tablas.
+- `web/index.html`, `web/app.js`: panel de administrador.
+- `web/user.html`, `web/user.js`: panel de cliente final.
+- `web/login.html`, `web/login.js`: autenticacion (login y registro).
+- `web/styles.css`: sistema de diseño compartido por ambos paneles.
 - `tests/test_license_system.py`: pruebas del flujo principal.
 
 ## Requisitos
@@ -136,6 +166,8 @@ Se requiere PostgreSQL 18 corriendo localmente con una base llamada `reto_tenden
 psql -U postgres -d reto_tendencias -f db/schema.sql
 ```
 
+La tabla `licencias` incluye una columna `payload` (JSON) que guarda el documento completo de la licencia (schema + payload + firmas) para poder revalidarla despues sin depender de que el cliente conserve el archivo original.
+
 Variables de entorno relevantes (ver `.env.example`):
 
 ```text
@@ -172,8 +204,8 @@ Guia rapida de uso (como cliente final, rol Individual/Empresa):
 
 1. Registra una cuenta desde `/login` (pestana de registro), o usa una ya creada.
 2. Inicia sesion — el sistema te redirige automaticamente a `/user`.
-3. Consulta tus licencias propias en la tabla "Mis licencias".
-4. Presiona `Validar` sobre cualquiera de tus licencias para revisar el estado de sus firmas.
+3. Consulta tus licencias propias en la tabla "Mis licencias", con tarjetas resumen calculadas en tiempo real.
+4. Presiona `Validar` sobre cualquiera de tus licencias para ver la pantalla de resultado con el estado de sus firmas.
 5. Presiona `Revocar` si deseas cancelar una licencia activa (pide confirmacion antes de ejecutar).
 
 Desde el panel de administrador puedes:
@@ -190,10 +222,10 @@ Desde el panel de administrador puedes:
 - Ver el JSON de la licencia y la redireccion resultante.
 - Ver detalles de verificacion de firma clasica y firma postcuantica.
 
-Desde el panel de usuario final puedes:
+Desde el panel de cliente final puedes:
 
 - Ver unicamente las licencias propias (filtradas por duenio real en la base de datos).
-- Validar cualquiera de tus licencias sin necesidad de pegar JSON manualmente.
+- Validar cualquiera de tus licencias y ver una pantalla de resultado dedicada segun su estado.
 - Revocar una licencia propia, con confirmacion previa.
 
 El frontend usa el mismo backend de validacion que la API y guarda claves/revocaciones de demostracion en `demo_output/`.
@@ -303,11 +335,12 @@ Panel administrador (requieren token con rol Admin):
 - `GET /api/licenses/revocations`: devuelve la lista de revocacion firmada (CRL).
 - `POST /api/reset-keys`: regenera el par de claves del sistema.
 
-Panel de usuario final (requieren token valido de cualquier rol; el sistema verifica duenio):
+Panel de cliente final (requieren token valido de cualquier rol; el sistema verifica duenio):
 
 - `GET /api/my-licenses`: lista las licencias del usuario autenticado.
 - `POST /api/my-licenses/validate`: revalida una licencia propia por su codigo, usando el documento completo guardado al emitirla.
 - `POST /api/my-licenses/cancel`: revoca una licencia propia (verifica duenio antes de ejecutar; queda registrada la cancelacion con el usuario responsable).
+- `POST /api/my-licenses/activate`: activa una licencia ingresando su codigo; si estaba libre (usuario demo), la liga a la cuenta del solicitante y registra el dispositivo. No accesible desde la interfaz por ahora, pero funcional.
 
 Publicos (sin autenticacion):
 
@@ -372,6 +405,7 @@ El documento completo (`schema` + `payload` + `signatures`) se persiste integro 
 - Las respuestas de estado solo incluyen claves publicas.
 - Generar, listar, revocar (por admin) y regenerar claves requiere token con rol Admin.
 - Un usuario Individual/Empresa solo puede ver, validar y revocar licencias de las que es duenio; cualquier intento sobre licencias de otro usuario responde con error de autorizacion.
+- Al activar una licencia con un codigo, el sistema rechaza la operacion si esa licencia ya pertenece a otro usuario real (no permite "robar" licencias de otras cuentas).
 - Las contrasenas se almacenan con hash bcrypt; nunca en texto plano.
 - Los tokens JWT expiran automaticamente segun `PQLICENSE_JWT_EXPIRES_MINUTES`.
 - `demo_output/` esta ignorado por Git porque contiene claves y revocaciones locales.
@@ -390,4 +424,4 @@ Las pruebas cubren licencia valida, licencia alterada, vencimiento, revocacion f
 
 ## Siguiente paso para produccion
 
-Endurecer despliegue: usar HTTPS, migraciones formales de base de datos, almacenamiento seguro de claves, rotacion por `key_id`, logs de auditoria, y credenciales/secretos fuera del codigo mediante un gestor de secretos dedicado (HSM/KMS/vault). Evaluar tambien si el flujo de autoservicio (usuarios generando sus propias licencias) se incorpora, y bajo que reglas de limite y validacion.
+Endurecer despliegue: usar HTTPS, migraciones formales de base de datos, almacenamiento seguro de claves, rotacion por `key_id`, logs de auditoria, y credenciales/secretos fuera del codigo mediante un gestor de secretos dedicado (HSM/KMS/vault).

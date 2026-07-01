@@ -48,6 +48,17 @@ def get_user_id_by_correo(correo: str) -> Optional[int]:
         return row[0] if row else None
 
 
+def set_license_owner(codigo_licencia: str, id_usuario: int) -> bool:
+    """Reasigna el dueno de una licencia. Se usa al 'activar' una licencia con
+    un usuario logueado: si la licencia estaba libre (usuario demo), pasa a ser suya."""
+    with session_scope() as s:
+        result = s.execute(
+            text("UPDATE licencias SET id_usuario = :id_usuario WHERE codigo_licencia = :codigo"),
+            {"id_usuario": id_usuario, "codigo": codigo_licencia},
+        )
+        return result.rowcount > 0
+
+
 def insert_license(*, codigo_licencia: str, id_usuario: int, fecha_expiracion: datetime,
                    firma_postcuantica: Dict[str, Any], firma_clasica: Optional[Dict[str, Any]],
                    license_doc: Optional[Dict[str, Any]] = None) -> int:
@@ -84,12 +95,13 @@ def get_license_id_by_code(codigo_licencia: str) -> Optional[int]:
 
 
 def get_full_license_by_code(codigo_licencia: str) -> Optional[Dict[str, Any]]:
-    """Trae el documento completo de la licencia (para revalidar) mas su dueno y estado."""
+    """Trae el documento completo de la licencia (para revalidar/activar) mas su
+    id interno, dueno y estado."""
     with session_scope() as s:
         row = s.execute(
             text(
                 """
-                SELECT id_usuario, payload, estado
+                SELECT id_licencia, id_usuario, payload, estado
                 FROM licencias
                 WHERE codigo_licencia = :codigo
                 """
@@ -98,13 +110,14 @@ def get_full_license_by_code(codigo_licencia: str) -> Optional[Dict[str, Any]]:
         ).fetchone()
         if not row:
             return None
-        license_doc = row[1]
+        license_doc = row[2]
         if isinstance(license_doc, str):
             license_doc = json.loads(license_doc)
         return {
-            "id_usuario": row[0],
+            "id_licencia": row[0],
+            "id_usuario": row[1],
             "license_doc": license_doc,
-            "estado": row[2],
+            "estado": row[3],
         }
 
 

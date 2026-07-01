@@ -155,6 +155,55 @@ class LicenseController:
         result = self.cancel(license_id, {"reason": reason or "cancelacion solicitada por el usuario"}, actor_id=actor_id)
         return result
 
+    def activate_license(self, token: str, code: str, device_fingerprint: str) -> Dict[str, Any]:
+        """Permite a un usuario final activar una licencia que compro, ingresando su codigo.
+        Si la licencia esta libre (aun en el usuario demo) la vincula a su cuenta; si ya es
+        suya, no hace nada especial; si es de OTRO usuario real, rechaza la operacion.
+        Registra este dispositivo como activacion y reusa validate() para devolver el mismo
+        resultado (valid/expired/revoked/etc.) que usan las pantallas de resultado."""
+        payload_token = self.identify_token(token)
+        if not payload_token:
+            return {"error": "auth_required"}
+        if not self.db_enabled:
+            return {"error": "database_unavailable"}
+
+        normalized_code = (code or "").strip().upper()
+        if not normalized_code:
+            return {"error": "missing_license_id"}
+
+        record = db_repo.get_full_license_by_code(normalized_code)
+        if not record:
+            return {"error": "license_not_found"}
+
+        requester_id = int(payload_token["sub"])
+        owner_id = record.get("id_usuario")
+        if owner_id not in (self.demo_user_id, requester_id):
+            return {"error": "license_owned_by_other"}
+
+        if owner_id != requester_id:
+            db_repo.set_license_owner(normalized_code, requester_id)
+
+        if device_fingerprint:
+            db_repo.register_device_activation(
+                id_licencia=record["id_licencia"],
+                huella_hardware=device_fingerprint,
+            )
+
+        license_doc = record.get("license_doc")
+        if not license_doc:
+            return {"error": "license_missing_payload"}
+
+        inner_payload = license_doc.get("payload", {})
+        body = {
+            "license": license_doc,
+            "product_id": inner_payload.get("product_id", self.product_id),
+            "device_fingerprint": device_fingerprint or inner_payload.get("device_fingerprint", ""),
+        }
+        result = self.validate(body)
+        result["activated"] = True
+        result["license_id"] = normalized_code
+        return result
+
     def reset_keys(self) -> Dict[str, Any]:
         self.keys = create_key_bundle()
         self.revocations = None
