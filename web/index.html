@@ -3,187 +3,681 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sistema de Licencias Postcuantico</title>
+    <title>DigiPermit – Panel de Administración</title>
     <link rel="stylesheet" href="/styles.css">
+    <style>
+      .app-layout { display: flex; min-height: 100vh; }
+
+      .sidebar {
+        position: fixed; top: 0; bottom: 0; left: 0;
+        width: 220px; display: flex; flex-direction: column;
+        background: var(--dp-surface); border-right: 1px solid var(--dp-border);
+        z-index: 30;
+      }
+      .sidebar-logo { padding: 10px 12px 8px; border-bottom: 1px solid var(--dp-border); }
+      .sidebar-logo img { width: 100%; height: auto; object-fit: contain; }
+      .sidebar-nav { flex: 1; padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+      .nav-group-label { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dp-fg-5); padding: 0 6px; margin-bottom: 1px; margin-top: 4px; font-family: var(--font-display); }
+      .nav-group { display: flex; flex-direction: column; gap: 0px; }
+      .nav-item { display: flex; align-items: center; gap: 7px; padding: 5px 6px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--dp-fg-3); background: none; border: none; cursor: pointer; text-align: left; width: 100%; transition: background 0.12s, color 0.12s; font-family: var(--font-body); }
+      .nav-item:hover { background: var(--dp-surface-2); color: var(--dp-fg-1); }
+      .nav-item.active { background: var(--cyan-dim); color: var(--cyan); }
+      .nav-item svg { flex-shrink: 0; }
+      .sidebar-bottom { padding: 8px 8px; border-top: 1px solid var(--dp-border); display: flex; flex-direction: column; gap: 2px; }
+      .sidebar-user { display: flex; align-items: center; gap: 8px; padding: 8px; }
+      .sidebar-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-gradient); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+      .sidebar-user-info { min-width: 0; }
+      .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--dp-fg-1); }
+      .sidebar-user-email { font-size: 10px; color: var(--dp-fg-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .theme-btn { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--dp-fg-3); background: none; border: none; cursor: pointer; width: 100%; font-family: var(--font-body); }
+      .theme-btn:hover { background: var(--dp-surface-2); color: var(--dp-fg-1); }
+
+      .main-content { margin-left: 220px; flex: 1; min-width: 0; }
+
+      .topbar-app { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--dp-surface); border-bottom: 1px solid var(--dp-border); position: sticky; top: 0; z-index: 20; }
+      .topbar-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--dp-fg-1); }
+      .topbar-right { display: flex; align-items: center; gap: 8px; }
+      .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--dp-border); background: var(--dp-surface-2); color: var(--dp-fg-3); font-size: 11px; font-weight: 600; }
+      .chip.active { border-color: rgba(34,211,238,0.3); background: var(--cyan-dim); color: var(--cyan); }
+
+      .page { display: none; }
+      .page.active { display: block; }
+      .page-inner { padding: 24px; }
+      .page-header { margin-bottom: 20px; }
+      .page-eyebrow { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dp-fg-5); margin-bottom: 4px; }
+      .page-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--dp-fg-1); margin: 0 0 4px; }
+      .page-sub { font-size: 13px; color: var(--dp-fg-4); margin: 0; }
+
+      .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+      .stat-card { background: var(--dp-surface); border: 1px solid var(--dp-border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+      .stat-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+      .stat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+      .stat-icon.cyan { background: var(--cyan-dim); color: var(--cyan); }
+      .stat-icon.amber { background: var(--amber-dim); color: var(--amber); }
+      .stat-icon.red { background: var(--red-dim); color: var(--red); }
+      .stat-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+      .stat-badge.cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(34,211,238,0.2); }
+      .stat-badge.amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+      .stat-badge.red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+      .stat-badge.blue { background: rgba(91,141,239,0.12); color: #5b8def; border: 1px solid rgba(91,141,239,0.2); }
+      .stat-value { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--dp-fg-1); line-height: 1; }
+      .stat-label { font-size: 12px; color: var(--dp-fg-4); }
+
+      .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+      .quick-card { background: var(--dp-surface); border: 1px solid var(--dp-border); border-radius: 12px; padding: 18px; cursor: pointer; text-align: left; width: 100%; display: flex; align-items: flex-start; justify-content: space-between; transition: border-color 0.15s, background 0.15s; font-family: var(--font-body); }
+      .quick-card:hover { border-color: var(--cyan); background: var(--dp-surface-2); }
+      .quick-card-body { display: flex; flex-direction: column; gap: 6px; }
+      .quick-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--cyan-dim); color: var(--cyan); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+      .quick-title { font-size: 13px; font-weight: 600; color: var(--dp-fg-1); font-family: var(--font-display); }
+      .quick-sub { font-size: 12px; color: var(--dp-fg-4); line-height: 1.4; }
+      .quick-arrow { color: var(--dp-fg-5); margin-top: 4px; flex-shrink: 0; }
+      .section-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--dp-fg-2); margin-bottom: 12px; }
+
+      .table-toolbar { padding: 12px 18px; border-bottom: 1px solid var(--dp-border); display: flex; align-items: center; gap: 10px; }
+      .search-input { display: flex; align-items: center; gap: 8px; background: var(--dp-page); border: 1px solid var(--dp-border); border-radius: 8px; padding: 0 12px; flex: 1; max-width: 320px; }
+      .search-input svg { color: var(--dp-fg-4); flex-shrink: 0; }
+      .search-input input { background: none; border: none; outline: none; color: var(--dp-fg-1); font: inherit; font-size: 13px; height: 34px; width: 100%; }
+      .search-input input::placeholder { color: var(--dp-fg-5); }
+
+      .app-workspace { display: flex; gap: 18px; align-items: flex-start; }
+
+      .user-screen { min-height: calc(100vh - 52px); display: flex; flex-direction: column; }
+      .user-screen-topbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--dp-border); }
+      .user-screen-back { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dp-fg-3); background: none; border: none; cursor: pointer; font-family: var(--font-body); padding: 0; min-height: unset; }
+      .user-screen-back:hover { color: var(--dp-fg-1); }
+      .user-screen-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dp-fg-5); font-family: var(--font-display); }
+      .user-screen-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; overflow: hidden; }
+      .user-screen-logo { height: 32px; width: auto; object-fit: contain; margin-bottom: 36px; opacity: 0.35; }
+
+      .status-ring { position: relative; margin-bottom: 24px; flex-shrink: 0; width: 112px; height: 112px; }
+      .status-ring-outer { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      .status-ring-inner { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      .status-ring-border { position: absolute; top: 0; left: 0; width: 112px; height: 112px; border-radius: 50%; border: 2px solid; }
+      .status-title { font-family: var(--font-display); font-size: 26px; font-weight: 600; margin-bottom: 10px; }
+      .status-sub { font-size: 14px; color: var(--dp-fg-4); margin-bottom: 24px; max-width: 340px; line-height: 1.6; }
+      .status-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+      .status-line { width: 160px; height: 1px; margin-top: 40px; }
+      .reason-tabs { display: flex; gap: 2px; background: var(--dp-surface-2); border: 1px solid var(--dp-border); border-radius: 12px; padding: 4px; margin-bottom: 28px; }
+      .reason-tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--dp-fg-4); background: none; border: none; cursor: pointer; font-family: var(--font-body); min-height: unset; }
+      .reason-tab.active { background: var(--dp-surface); color: var(--dp-fg-2); font-weight: 600; }
+
+      .info-card { background: var(--dp-surface); border: 1px solid var(--dp-border); border-radius: 12px; padding: 18px 22px; margin-bottom: 18px; }
+      .info-card-header { display: flex; align-items: flex-start; gap: 14px; }
+      .info-card-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--cyan-dim); color: var(--cyan); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .info-card-text h3 { font-size: 14px; font-weight: 600; color: var(--dp-fg-1); margin: 0 0 6px; font-family: var(--font-display); }
+      .info-card-text p { font-size: 13px; color: var(--dp-fg-4); margin: 0 0 14px; line-height: 1.5; }
+      .info-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .info-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--dp-border); background: var(--dp-surface-2); color: var(--dp-fg-3); }
+      .info-chip.cyan { border-color: rgba(34,211,238,0.3); background: var(--cyan-dim); color: var(--cyan); }
+      .download-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--cyan-dim); border: 1px solid rgba(34,211,238,0.3); color: var(--cyan); cursor: pointer; font-family: var(--font-body); min-height: unset; }
+
+      /* Crear licencia layout */
+      .crear-layout { display: flex; gap: 18px; align-items: flex-start; }
+      .crear-form-panel { flex: 0 0 460px; }
+      .crear-result-panel { flex: 1; min-width: 0; }
+
+      body.light { --dp-page: #eef4ff; --dp-surface: #ffffff; --dp-surface-2: #ddeafb; --dp-border: rgba(14,42,100,0.12); --dp-border-med: rgba(14,42,100,0.18); --dp-fg-1: #0a1628; --dp-fg-2: #1e3a5f; --dp-fg-3: #3b5a82; --dp-fg-4: #5b7da8; --dp-fg-5: #8baac8; --dp-overlay-sm: rgba(14,42,100,0.04); }
+
+      @media (max-width: 900px) {
+        .sidebar { display: none; }
+        .main-content { margin-left: 0; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .quick-grid { grid-template-columns: 1fr; }
+        .app-workspace { flex-direction: column; }
+        .crear-layout { flex-direction: column; }
+        .crear-form-panel { flex: none; width: 100%; }
+      }
+    </style>
+    <script src="/theme.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <section class="topbar">
-        <div>
-          <p class="eyebrow">Reto Mayo - Julio 2026</p>
-          <h1>Sistema de Licencias Postcuantico</h1>
-        </div>
-        <div class="status-strip">
-          <span id="classicStatus">Ed25519</span>
-          <span id="pqStatus">ML-DSA-65-DEMO</span>
-          <span id="revokedStatus">0 revocadas</span>
-        </div>
-      </section>
+    <div class="app-layout">
 
-      <section class="panel admin-panel">
-        <div>
-          <h2>Acceso administrador</h2>
-          <p>Necesario para generar, revocar, listar licencias y regenerar claves. Demo: admin / admin123.</p>
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <img src="/logo.png" alt="DigiPermit">
         </div>
-        <form id="loginForm" class="login-form">
-          <label>
-            Usuario
-            <input name="username" value="admin" autocomplete="username">
-          </label>
-          <label>
-            Clave
-            <input name="password" type="password" value="admin123" autocomplete="current-password">
-          </label>
-          <button class="primary" type="submit">Entrar</button>
-          <span id="adminStatus" class="badge neutral">Sin sesion</span>
-        </form>
-      </section>
-
-      <section class="workspace">
-        <aside class="panel controls">
-          <div class="panel-header">
-            <h2>Crear licencia</h2>
-            <button id="resetKeys" class="secondary" type="button">Regenerar claves</button>
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <button class="nav-item active" data-page="dashboard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </button>
           </div>
-
-          <form id="licenseForm" class="form-grid">
-            <label>
-              Licencia
-              <input name="license_id" value="LIC-001" required>
-            </label>
-            <label>
-              Cliente
-              <input name="customer_id" value="cliente-demo" required>
-            </label>
-            <label>
-              Producto
-              <input name="product_id" value="app-pro" required>
-            </label>
-            <label>
-              Plan
-              <input name="plan" value="professional" required>
-            </label>
-            <label>
-              Modo de firma
-              <select name="validation_mode">
-                <option value="hybrid" selected>Hibrido recomendado</option>
-                <option value="classical_only">Clasico legado</option>
-                <option value="post_quantum_only">Postcuantico futuro</option>
-              </select>
-            </label>
-            <label>
-              Dias
-              <input name="days" type="number" min="1" value="365" required>
-            </label>
-            <label>
-              Dispositivos
-              <input name="device_limit" type="number" min="1" value="3" required>
-            </label>
-            <label>
-              Funciones
-              <input name="features" value="offline, reports">
-            </label>
-            <label class="span-2">
-              Huella de dispositivo
-              <input name="device_fingerprint" value="device-demo-hash">
-            </label>
-            <label class="span-2">
-              Link valido
-              <input name="redirect_url" value="https://app.example.com/start" required>
-            </label>
-            <label class="span-2">
-              Link de error
-              <input name="error_url" value="https://app.example.com/license-error" required>
-            </label>
-            <button class="primary span-2" type="submit">Generar licencia firmada</button>
-          </form>
-        </aside>
-
-        <section class="panel result-panel">
-          <div class="panel-header">
-            <h2>Operacion</h2>
-            <div class="button-row">
-              <button id="validateLicense" class="secondary" type="button">Validar</button>
-              <button id="revokeLicense" class="danger" type="button">Revocar</button>
+          <div>
+            <p class="nav-group-label">Licencias</p>
+            <div class="nav-group">
+              <button class="nav-item" data-page="crear">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Crear licencia
+              </button>
+              <button class="nav-item" data-page="licencias">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Licencias emitidas
+              </button>
+              <button class="nav-item" data-page="cancelaciones">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                Cancelaciones
+              </button>
+              <button class="nav-item" data-page="revocacion">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/></svg>
+                Revocación offline
+              </button>
+              <button class="nav-item" data-page="historial">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Historial
+              </button>
             </div>
           </div>
-
-          <div id="resultBadge" class="badge neutral">Sin licencia generada</div>
-          <div class="redirect-box">
-            <span>Redireccion</span>
-            <a id="redirectUrl" href="#" target="_blank" rel="noreferrer">-</a>
+          <div>
+            <p class="nav-group-label">Vista de usuario</p>
+            <div class="nav-group">
+              <button class="nav-item" data-page="acceso-concedido">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Acceso concedido
+              </button>
+              <button class="nav-item" data-page="acceso-denegado">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Acceso denegado
+              </button>
+            </div>
           </div>
-          <div class="verification-grid" aria-label="Detalles de verificacion">
-            <h3>Detalles de verificacion</h3>
-            <dl>
-              <div><dt>Firma clasica</dt><dd id="classicCheck">-</dd></div>
-              <div><dt>Firma postcuantica</dt><dd id="pqCheck">-</dd></div>
-              <div><dt>Modo requerido</dt><dd id="modeCheck">-</dd></div>
-              <div><dt>Resultado</dt><dd id="statusCheck">-</dd></div>
-            </dl>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="sidebar-user">
+            <div class="sidebar-avatar">A</div>
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-name">Admin</div>
+              <div class="sidebar-user-email" id="userEmail">admin@sistema.com</div>
+            </div>
           </div>
-
-          <div class="json-tools">
-            <h3>Licencia JSON</h3>
-            <textarea id="licenseJson" spellcheck="false" placeholder="Genera una licencia o pega aqui una licencia existente"></textarea>
-          </div>
-        </section>
-      </section>
-
-      <section class="panel footer-panel">
-        <div>
-          <h2>Flujo cubierto</h2>
-          <p>Generacion, validacion online/offline, revocacion firmada, modos hibridos y redireccion parametrica segun estado.</p>
+          <button class="theme-btn" id="themeToggle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span id="themeLabel">Modo claro</span>
+          </button>
+          <button class="nav-item" id="logoutButton" style="color: var(--red);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Cerrar sesión
+          </button>
         </div>
-        <pre id="eventLog">Listo para crear licencias.</pre>
-      </section>
+      </aside>
 
-      <section class="tables-grid">
-        <div class="panel table-panel">
-          <div class="panel-header">
-            <h2>Licencias emitidas</h2>
-            <button id="refreshLicenses" class="secondary" type="button">Actualizar</button>
+      <div class="main-content">
+        <header class="topbar-app">
+          <span class="topbar-title" id="pageTitle">Dashboard</span>
+          <div class="topbar-right">
+            <span class="chip" id="classicStatus">Ed25519</span>
+            <span class="chip active" id="pqStatus">ML-DSA-65</span>
+            <span class="chip" id="revokedStatus">0 revocadas</span>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Licencia</th>
-                  <th>Cliente</th>
-                  <th>Plan</th>
-                  <th>Modo</th>
-                  <th>Vence</th>
-                </tr>
-              </thead>
-              <tbody id="licenseRows">
-                <tr><td colspan="5">Inicia sesion para ver licencias.</td></tr>
-              </tbody>
-            </table>
+        </header>
+
+        <!-- Dashboard -->
+        <div class="page active" id="page-dashboard">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Panel de control</p>
+              <h1 class="page-title">Dashboard</h1>
+              <p class="page-sub">Resumen del sistema — actualizado el <span id="dashDate"></span></p>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-card-top"><div class="stat-icon cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><span class="stat-badge cyan">Activas</span></div>
+                <div class="stat-value" id="statActivas">—</div>
+                <div class="stat-label">Licencias activas</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top"><div class="stat-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><span class="stat-badge amber">Vencidas</span></div>
+                <div class="stat-value" id="statVencidas">—</div>
+                <div class="stat-label">Licencias vencidas</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top"><div class="stat-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div><span class="stat-badge red">Revocadas</span></div>
+                <div class="stat-value" id="statRevocadas">—</div>
+                <div class="stat-label">Licencias revocadas</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top"><div class="stat-icon cyan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><span class="stat-badge blue">Total</span></div>
+                <div class="stat-value" id="statTotal">—</div>
+                <div class="stat-label">Total licencias emitidas</div>
+              </div>
+            </div>
+            <p class="section-title">Acciones rápidas</p>
+            <div class="quick-grid">
+              <button class="quick-card" data-page="crear">
+                <div class="quick-card-body">
+                  <div class="quick-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
+                  <div class="quick-title">Generar licencia</div>
+                  <div class="quick-sub">Crea una nueva licencia para un cliente o dispositivo.</div>
+                </div>
+                <div class="quick-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+              </button>
+              <button class="quick-card" data-page="licencias">
+                <div class="quick-card-body">
+                  <div class="quick-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                  <div class="quick-title">Licencias emitidas</div>
+                  <div class="quick-sub">Consulta todas las licencias generadas en el sistema.</div>
+                </div>
+                <div class="quick-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+              </button>
+              <button class="quick-card" data-page="historial">
+                <div class="quick-card-body">
+                  <div class="quick-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                  <div class="quick-title">Ver historial</div>
+                  <div class="quick-sub">Consulta el registro completo de validaciones y accesos.</div>
+                </div>
+                <div class="quick-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+              </button>
+            </div>
+            <p class="section-title">Licencias recientes</p>
+            <div class="panel" style="overflow:hidden;">
+              <table>
+                <thead><tr><th>Licencia</th><th>Cliente</th><th>Plan</th><th>Modo</th><th>Vence</th><th>Estado</th></tr></thead>
+                <tbody id="dashboardRows"><tr><td colspan="6" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="panel table-panel">
-          <div class="panel-header">
-            <h2>Revocaciones</h2>
-            <button id="refreshRevocations" class="secondary" type="button">Actualizar</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Licencia</th>
-                  <th>Motivo</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody id="revocationRows">
-                <tr><td colspan="3">Sin revocaciones.</td></tr>
-              </tbody>
-            </table>
+        <!-- Crear licencia -->
+        <div class="page" id="page-crear">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Gestión</p>
+              <h1 class="page-title">Crear licencia</h1>
+              <p class="page-sub">Genera una nueva licencia firmada con ML-DSA-65 + Ed25519 en modo híbrido.</p>
+            </div>
+            <div class="crear-layout">
+              <div class="panel crear-form-panel" style="padding:22px;">
+                <form id="licenseForm" class="form-grid">
+                <label>Cliente <input name="customer_id" value="cliente-demo" required></label>
+                <label>Producto <input name="product_id" value="app-pro" required></label>
+                <label>Plan
+                  <select name="plan">
+                    <option value="professional" selected>Professional</option>
+                    <option value="basic">Basic</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </label>
+                <label>Días <input name="days" type="number" min="1" value="365" required></label>
+                <label class="span-2" style="opacity:0.6;">
+                  Código de licencia (autogenerado)
+                  <input name="license_id" id="licenseIdPreview" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <label style="opacity:0.6;">
+                  Modo de firma (fijo)
+                  <input value="Híbrido (ML-DSA-65 + Ed25519)" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <label style="opacity:0.6;">
+                  Dispositivos máx.
+                  <input value="3" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <label class="span-2" style="opacity:0.6;">
+                  Huella de dispositivo (autogenerada)
+                  <input name="device_fingerprint" id="fingerprintPreview" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <label class="span-2" style="opacity:0.6;">
+                  Link válido (sistema)
+                  <input value="https://app.example.com/start" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <label class="span-2" style="opacity:0.6;">
+                  Link de error (sistema)
+                  <input value="https://app.example.com/license-error" readonly style="background:var(--dp-surface-2);cursor:not-allowed;">
+                </label>
+                <input type="hidden" name="validation_mode" value="hybrid">
+                <input type="hidden" name="redirect_url" value="https://app.example.com/start">
+                <input type="hidden" name="error_url" value="https://app.example.com/license-error">
+                <button type="button" class="secondary span-2" id="regenerarCampos" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Generar nuevo código
+                </button>
+                <button class="primary span-2" type="submit">Generar licencia firmada</button>
+              </form>
+              </div>
+              <div class="panel crear-result-panel" style="padding:20px;">
+                <div class="panel-header">
+                  <h2>Resultado</h2>
+                  <div class="button-row">
+                    <button id="validateLicense" class="secondary">Validar</button>
+                    <button id="revokeLicense" class="danger">Revocar</button>
+                  </div>
+                </div>
+                <div id="resultBadge" class="badge neutral">Sin licencia generada</div>
+                <div class="redirect-box">
+                  <span>Redirección</span>
+                  <a id="redirectUrl" href="#" target="_blank" rel="noreferrer">-</a>
+                </div>
+                <div class="verification-grid">
+                  <h3>Detalles de verificación</h3>
+                  <dl>
+                    <div><dt>Firma clásica</dt><dd id="classicCheck">-</dd></div>
+                    <div><dt>Firma postcuántica</dt><dd id="pqCheck">-</dd></div>
+                    <div><dt>Modo</dt><dd id="modeCheck">-</dd></div>
+                    <div><dt>Resultado</dt><dd id="statusCheck">Primero genera una licencia.</dd></div>
+                  </dl>
+                </div>
+                <h3>Licencia JSON</h3>
+                <textarea id="licenseJson" spellcheck="false" placeholder="Genera una licencia o pega aquí un JSON existente"></textarea>
+                <h3 style="margin-top:14px;">Log de eventos</h3>
+                <pre id="eventLog">Listo.</pre>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-    </main>
+
+        <!-- Licencias emitidas -->
+        <div class="page" id="page-licencias">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Gestión</p>
+              <h1 class="page-title">Licencias emitidas</h1>
+              <p class="page-sub">Todas las licencias generadas en el sistema.</p>
+            </div>
+            <div class="panel" style="overflow:hidden;">
+              <div class="table-toolbar">
+                <div class="search-input">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="licenseSearch" placeholder="Buscar por ID, cliente o producto...">
+                </div>
+                <button class="secondary" id="refreshLicenses" style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Actualizar
+                </button>
+              </div>
+              <table>
+                <thead><tr><th>ID Licencia</th><th>Cliente</th><th>Plan</th><th>Modo</th><th>Vence</th><th>Estado</th></tr></thead>
+                <tbody id="licenseRows"><tr><td colspan="6" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Validar page (standalone) -->
+        <div class="page" id="page-validar">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Operaciones</p>
+              <h1 class="page-title">Validar / Revocar</h1>
+              <p class="page-sub">Pega un JSON de licencia para validar o revocar.</p>
+            </div>
+            <div class="app-workspace">
+              <div class="panel result-panel">
+                <div class="panel-header">
+                  <h2>Operación</h2>
+                  <div class="button-row">
+                    <button id="validateLicense2" class="secondary">Validar</button>
+                    <button id="revokeLicense2" class="danger">Revocar</button>
+                  </div>
+                </div>
+                <div id="resultBadge2" class="badge neutral">Sin licencia</div>
+                <div class="redirect-box">
+                  <span>Redirección</span>
+                  <a id="redirectUrl2" href="#" target="_blank" rel="noreferrer">-</a>
+                </div>
+                <div class="verification-grid">
+                  <h3>Detalles de verificación</h3>
+                  <dl>
+                    <div><dt>Firma clásica</dt><dd id="classicCheck2">-</dd></div>
+                    <div><dt>Firma postcuántica</dt><dd id="pqCheck2">-</dd></div>
+                    <div><dt>Modo</dt><dd id="modeCheck2">-</dd></div>
+                    <div><dt>Resultado</dt><dd id="statusCheck2">-</dd></div>
+                  </dl>
+                </div>
+                <h3>Licencia JSON</h3>
+                <textarea id="licenseJson2" spellcheck="false" placeholder="Pega aquí un JSON de licencia existente"></textarea>
+              </div>
+              <div class="panel" style="padding:20px;flex:0 0 300px;min-width:0;">
+                <h3>Log de eventos</h3>
+                <pre id="eventLog2">Listo.</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dispositivos -->
+        <div class="page" id="page-dispositivos">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Gestión</p>
+              <h1 class="page-title">Dispositivos activados</h1>
+              <p class="page-sub">Consulta y gestiona los dispositivos vinculados a una licencia.</p>
+            </div>
+            <div class="panel" style="overflow:hidden;">
+              <div class="table-toolbar">
+                <div class="search-input">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="deviceSearch" placeholder="Buscar por licencia o huella...">
+                </div>
+                <button class="secondary" id="refreshDevices" style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Actualizar
+                </button>
+              </div>
+              <table>
+                <thead><tr><th>Licencia</th><th>Huella de hardware</th><th>Fecha activación</th><th>Estado</th></tr></thead>
+                <tbody id="deviceRows"><tr><td colspan="4" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancelaciones -->
+        <div class="page" id="page-cancelaciones">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Gestión</p>
+              <h1 class="page-title">Cancelaciones</h1>
+              <p class="page-sub">Registro de licencias canceladas o revocadas en el sistema.</p>
+            </div>
+            <div class="panel" style="overflow:hidden;">
+              <div class="table-toolbar">
+                <div class="search-input">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="cancelSearch" placeholder="Buscar por licencia, motivo...">
+                </div>
+                <button class="secondary" id="refreshCancelaciones" style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Actualizar
+                </button>
+              </div>
+              <table>
+                <thead><tr><th>Licencia</th><th>Fecha</th><th>Tipo</th><th>Motivo</th></tr></thead>
+                <tbody id="cancelRows"><tr><td colspan="4" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Revocación offline -->
+        <div class="page" id="page-revocacion">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Seguridad</p>
+              <h1 class="page-title">Lista de revocación offline</h1>
+              <p class="page-sub">Snapshot firmado para verificación sin conexión al servidor.</p>
+            </div>
+            <div class="info-card">
+              <div class="info-card-header">
+                <div class="info-card-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/></svg></div>
+                <div class="info-card-text">
+                  <h3>¿Qué es la revocación offline?</h3>
+                  <p>Snapshot firmado que los clientes sin conexión descargan periódicamente para verificar licencias revocadas sin contactar al servidor.</p>
+                  <div class="info-meta">
+                    <span class="info-chip cyan" id="revListVersion"># Versión: —</span>
+                    <span class="info-chip cyan">⊙ Firma activa</span>
+                    <button class="download-btn" id="downloadCRL">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Descargar snapshot (JSON)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel" style="overflow:hidden;">
+              <div class="table-toolbar">
+                <div class="search-input">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" id="revSearch" placeholder="Buscar por licencia o versión...">
+                </div>
+                <button class="secondary" id="refreshRevocaciones" style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Actualizar
+                </button>
+              </div>
+              <table>
+                <thead><tr><th>Código de licencia</th><th>Fecha de revocación</th><th>Versión de lista</th></tr></thead>
+                <tbody id="revocationRows"><tr><td colspan="3" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="page" id="page-historial">
+          <div class="page-inner">
+            <div class="page-header">
+              <p class="page-eyebrow">Registros</p>
+              <h1 class="page-title">Historial de validaciones</h1>
+              <p class="page-sub">Registro completo de todas las validaciones realizadas.</p>
+            </div>
+            <div class="panel" style="overflow:hidden;">
+              <div class="table-toolbar">
+                <div class="search-input">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" placeholder="Buscar por licencia, modo o resultado...">
+                </div>
+                <button class="secondary" id="refreshHistorial" style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Actualizar
+                </button>
+              </div>
+              <table>
+                <thead><tr><th>Licencia</th><th>Fecha</th><th>Modo</th><th>Resultado</th></tr></thead>
+                <tbody id="historialRows"><tr><td colspan="4" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acceso concedido -->
+        <div class="page" id="page-acceso-concedido">
+          <div class="user-screen">
+            <div class="user-screen-topbar">
+              <button class="user-screen-back" data-page="dashboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Volver al panel</button>
+              <span class="user-screen-tag">Vista de usuario final</span>
+            </div>
+            <div class="user-screen-body">
+              <img src="/logo.png" alt="DigiPermit" class="user-screen-logo">
+              <div class="status-ring">
+                <div class="status-ring-outer" style="background:rgba(34,211,238,0.08);">
+                  <div class="status-ring-inner" style="background:rgba(34,211,238,0.12);">
+                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                </div>
+                <div class="status-ring-border" style="border-color:rgba(34,211,238,0.2);"></div>
+              </div>
+              <h1 class="status-title" style="color:var(--cyan);">Licencia válida</h1>
+              <p class="status-sub">Tu licencia ha sido verificada correctamente. Puedes continuar usando el servicio.</p>
+              <div class="status-actions">
+                <button class="primary" style="display:flex;align-items:center;gap:8px;background:var(--brand-gradient);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Continuar
+                </button>
+              </div>
+              <div class="status-line" style="background:linear-gradient(90deg,transparent,var(--cyan) 50%,transparent);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acceso denegado -->
+        <div class="page" id="page-acceso-denegado">
+          <div class="user-screen">
+            <div class="user-screen-topbar">
+              <button class="user-screen-back" data-page="dashboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Volver al panel</button>
+              <span class="user-screen-tag">Vista de usuario final</span>
+            </div>
+            <div class="user-screen-body">
+              <img src="/logo.png" alt="DigiPermit" class="user-screen-logo">
+              <div class="reason-tabs">
+                <button class="reason-tab active" data-reason="expired">Vencida</button>
+                <button class="reason-tab" data-reason="revoked">Revocada</button>
+                <button class="reason-tab" data-reason="invalid">Inválida</button>
+              </div>
+              <div id="deniedContent" style="display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <script src="/theme.js"></script>
     <script src="/app.js"></script>
+    <script>
+      const d = new Date();
+      const el = document.getElementById('dashDate');
+      if (el) el.textContent = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      const pageTitles = {
+        dashboard: 'Dashboard', crear: 'Crear licencia', licencias: 'Licencias emitidas',
+        validar: 'Validar / Revocar', dispositivos: 'Dispositivos', cancelaciones: 'Cancelaciones',
+        revocacion: 'Revocación offline', historial: 'Historial',
+        'acceso-concedido': 'Acceso concedido', 'acceso-denegado': 'Acceso denegado'
+      };
+
+      function navTo(page) {
+        document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
+        if (btn) btn.classList.add('active');
+        const pg = document.getElementById('page-' + page);
+        if (pg) pg.classList.add('active');
+        document.getElementById('pageTitle').textContent = pageTitles[page] || '';
+        if (page === 'revocacion') loadRevocations();
+        if (page === 'historial') loadHistorial();
+        if (page === 'cancelaciones') loadCancelaciones();
+        if (page === 'licencias') loadLicenses();
+        if (page === 'acceso-denegado') renderDenied('expired');
+      }
+
+      document.querySelectorAll('[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => navTo(btn.dataset.page));
+      });
+
+      const DENIED = {
+        expired: { title: 'Tu licencia ha vencido', sub: 'El período de validez de tu licencia expiró. Renuévala para continuar usando el servicio.', color: 'var(--amber)', bg: 'rgba(251,191,36,0.08)', bg2: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.2)', line: 'var(--amber)', primary: 'Renovar licencia', secondary: 'Contactar soporte' },
+        revoked: { title: 'Tu licencia fue revocada', sub: 'Esta licencia ha sido revocada por el administrador del sistema. Contacta a soporte para más información.', color: 'var(--red)', bg: 'rgba(248,113,113,0.08)', bg2: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)', line: 'var(--red)', primary: 'Contactar soporte', secondary: null },
+        invalid: { title: 'Licencia inválida', sub: 'No se pudo verificar esta licencia. Verifica el código ingresado o contacta a soporte.', color: 'var(--amber)', bg: 'rgba(251,146,60,0.08)', bg2: 'rgba(251,146,60,0.12)', border: 'rgba(251,146,60,0.2)', line: 'rgba(251,146,60,1)', primary: 'Contactar soporte', secondary: 'Reintentar' }
+      };
+
+      function renderDenied(reason) {
+        const c = DENIED[reason];
+        document.querySelectorAll('.reason-tab').forEach(t => t.classList.toggle('active', t.dataset.reason === reason));
+        document.getElementById('deniedContent').innerHTML = `
+          <div class="status-ring">
+            <div class="status-ring-outer" style="background:${c.bg};width:112px;height:112px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <div class="status-ring-inner" style="background:${c.bg2};width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="${c.color}" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+            </div>
+            <div class="status-ring-border" style="border-color:${c.border};"></div>
+          </div>
+          <h1 class="status-title" style="color:${c.color};">${c.title}</h1>
+          <p class="status-sub">${c.sub}</p>
+          <div class="status-actions">
+            <button class="primary" style="display:flex;align-items:center;gap:8px;background:var(--brand-gradient);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              ${c.primary}
+            </button>
+            ${c.secondary ? `<button class="secondary" style="display:flex;align-items:center;gap:8px;">${c.secondary}</button>` : ''}
+          </div>
+          <div class="status-line" style="background:linear-gradient(90deg,transparent,${c.line} 50%,transparent);margin-top:40px;"></div>
+        `;
+      }
+
+      document.querySelectorAll('.reason-tab').forEach(tab => {
+        tab.addEventListener('click', () => renderDenied(tab.dataset.reason));
+      });
+    </script>
   </body>
 </html>

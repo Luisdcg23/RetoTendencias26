@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DigiPermit — Mi cuenta</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div style="max-width:900px;margin:0 auto;padding:32px 24px;">
+    <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="/logo.png" alt="DigiPermit" style="height:36px;" />
+        <div>
+          <h1 style="margin:0;font-size:20px;">Hola, <span id="welcomeName">usuario</span></h1>
+          <p style="margin:0;color:var(--dp-fg-4);font-size:13px;">Panel de licencias — cuenta individual</p>
+        </div>
+      </div>
+      <button id="logoutButton" class="btn" style="padding:8px 16px;border-radius:8px;">Cerrar sesión</button>
+    </header>
+
+    <section style="background:var(--dp-bg-2, rgba(255,255,255,0.03));border-radius:12px;padding:24px;margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h2 style="margin:0;font-size:16px;">Mis licencias</h2>
+        <button id="refreshMyLicenses" class="btn" style="padding:6px 14px;border-radius:8px;font-size:13px;" onclick="loadMyLicenses()">Actualizar</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="text-align:left;color:var(--dp-fg-4);font-size:12px;">
+            <th style="padding:8px;">Código de licencia</th>
+            <th style="padding:8px;">Emitida</th>
+            <th style="padding:8px;">Expira</th>
+            <th style="padding:8px;">Estado</th>
+            <th style="padding:8px;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="myLicenseRows">
+          <tr><td colspan="5" style="color:var(--dp-fg-4);text-align:center;padding:24px;">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="validationResult" style="display:none;background:var(--dp-bg-2, rgba(255,255,255,0.03));border-radius:12px;padding:20px;">
+    </section>
+  </div>
+
+  <script src="/theme.js"></script>
+  <script src="/user.js"></script>
+</body>
+</html>

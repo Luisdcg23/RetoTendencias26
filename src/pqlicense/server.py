@@ -69,12 +69,60 @@ def make_handler(
                 _json_response(self, 400, {"error": "invalid_json"})
                 return
 
+            if self.path == "/api/auth/register":
+                response = controller.register(body)
+                if response.get("status") != "registered":
+                    _json_response(self, 400, response)
+                    return
+                _json_response(self, 200, response)
+                return
+
             if self.path == "/api/admin/login":
                 response = controller.login(body)
                 if response.get("status") != "authenticated":
                     _json_response(self, 401, response)
                     return
                 _json_response(self, 200, response)
+                return
+
+            if self.path == "/api/my-licenses/validate":
+                token = _bearer_token(self)
+                result = controller.validate_owned_license(token, body.get("license_id", ""))
+                error = result.get("error")
+                if error == "auth_required":
+                    _json_response(self, 401, result)
+                    return
+                if error == "forbidden":
+                    _json_response(self, 403, result)
+                    return
+                if error == "license_not_found":
+                    _json_response(self, 404, result)
+                    return
+                if error:
+                    _json_response(self, 400, result)
+                    return
+                _json_response(self, 200, result)
+                return
+
+            if self.path == "/api/my-licenses/cancel":
+                token = _bearer_token(self)
+                result = controller.revoke_owned_license(
+                    token, body.get("license_id", ""), body.get("reason", "")
+                )
+                error = result.get("error")
+                if error == "auth_required":
+                    _json_response(self, 401, result)
+                    return
+                if error == "forbidden":
+                    _json_response(self, 403, result)
+                    return
+                if error == "license_not_found":
+                    _json_response(self, 404, result)
+                    return
+                if error:
+                    _json_response(self, 400, result)
+                    return
+                _json_response(self, 200, result)
                 return
 
             if self.path in ("/api/reset-keys", "/api/licenses/reset-keys"):
@@ -114,8 +162,14 @@ def make_handler(
             _json_response(self, 404, {"error": "not_found"})
 
         def do_GET(self) -> None:
-            if self.path == "/":
+            if self.path == "/" or self.path == "/login":
+                _static_response(self, WEB_ROOT / "login.html", "text/html; charset=utf-8")
+                return
+            if self.path == "/app":
                 _static_response(self, WEB_ROOT / "index.html", "text/html; charset=utf-8")
+                return
+            if self.path == "/user":
+                _static_response(self, WEB_ROOT / "user.html", "text/html; charset=utf-8")
                 return
             if self.path == "/styles.css":
                 _static_response(self, WEB_ROOT / "styles.css", "text/css; charset=utf-8")
@@ -123,15 +177,46 @@ def make_handler(
             if self.path == "/app.js":
                 _static_response(self, WEB_ROOT / "app.js", "text/javascript; charset=utf-8")
                 return
+            if self.path == "/login.js":
+                _static_response(self, WEB_ROOT / "login.js", "text/javascript; charset=utf-8")
+                return
+            if self.path == "/user.js":
+                _static_response(self, WEB_ROOT / "user.js", "text/javascript; charset=utf-8")
+                return
+            if self.path == "/logo.png":
+                _static_response(self, WEB_ROOT / "logo.png", "image/png")
+                return
+            if self.path == "/theme.js":
+                _static_response(self, WEB_ROOT / "theme.js", "text/javascript; charset=utf-8")
+                return
             if self.path in ("/api/state", "/api/licenses/state"):
                 _json_response(self, 200, controller.state())
+                return
+            if self.path == "/api/my-licenses":
+                result = controller.my_licenses(_bearer_token(self))
+                if result.get("error"):
+                    _json_response(self, 401, result)
+                    return
+                _json_response(self, 200, result)
                 return
             if self.path == "/api/licenses":
                 if not _require_admin(self, controller):
                     return
                 _json_response(self, 200, controller.list_licenses())
                 return
+            if self.path == "/api/historial":
+                if not _require_admin(self, controller):
+                    return
+                _json_response(self, 200, controller.historial())
+                return
+            if self.path == "/api/cancelaciones":
+                if not _require_admin(self, controller):
+                    return
+                _json_response(self, 200, controller.cancelaciones())
+                return
             if self.path in ("/revocations", "/api/revocations", "/api/licenses/revocations"):
+                if not _require_admin(self, controller):
+                    return
                 _json_response(self, 200, controller.revocation_list())
                 return
             _json_response(self, 404, {"error": "not_found"})

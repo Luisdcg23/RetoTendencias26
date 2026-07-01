@@ -1,6 +1,6 @@
 # Sistema de Validacion de Licencias Postcuantico
 
-Prototipo en Python para el reto "Sistema de Validacion PostCuantico". Implementa generacion de licencias, validacion offline/online, revocacion manual y redireccion segun estado de la licencia.
+Prototipo en Python para el reto "Sistema de Validacion PostCuantico". Implementa generacion de licencias, validacion offline/online, revocacion manual (por admin y por el propio usuario), y redireccion segun estado de la licencia. Incluye persistencia real en PostgreSQL, autenticacion con JWT/bcrypt, y control de acceso por rol.
 
 ## Enfoque
 
@@ -28,10 +28,37 @@ La computacion cuantica, con algoritmos como Shor, amenaza criptografia clasica 
 
 Por eso la validacion de licencias permanece como software clasico y no requiere Qiskit, Q#, Azure Quantum ni simuladores cuanticos.
 
+## Persistencia y autenticacion
+
+El sistema usa **PostgreSQL 18** (base `reto_tendencias`) como almacenamiento real, con 7 tablas relacionadas:
+
+- `usuarios`, `tipo_de_usuario`: cuentas y roles (Admin, Individual, Empresa).
+- `licencias`: nucleo del sistema, incluye el documento firmado completo (`payload` JSON) ademas de las columnas individuales usadas para listados rapidos.
+- `cancelaciones`, `historial_validaciones`: auditoria de cancelaciones y de cada intento de validacion.
+- `dispositivo_activacion`: control de activaciones por huella de hardware.
+- `revocaciones_offline`: snapshot versionado (CRL) para validacion sin conexion.
+
+La autenticacion usa:
+
+- **bcrypt** para hashear contrasenas (nunca en texto plano).
+- **JWT** (PyJWT) firmado con `PQLICENSE_JWT_SECRET`, con expiracion configurable (`PQLICENSE_JWT_EXPIRES_MINUTES`, default 120 minutos).
+- El payload del JWT incluye `sub` (id de usuario), `correo`, `rol` y `nombre_completo`, lo que permite identificar y filtrar datos por usuario sin ir a la base de datos en cada peticion.
+
+Si PostgreSQL no esta disponible al arrancar, el sistema cae a un modo de almacenamiento en memoria (no persistente) para no bloquear el desarrollo, e imprime un aviso en consola.
+
+## Roles y vistas
+
+El sistema tiene dos vistas separadas segun el rol del usuario autenticado:
+
+- **Admin** (`/app`): panel completo — generar licencias, validar, revocar, ver historial de validaciones, cancelaciones, y descargar la lista de revocacion (CRL).
+- **Individual / Empresa** (`/user`): panel de cliente final — ver solo las licencias propias, validarlas, y revocarlas.
+
+El login (`POST /api/admin/login`, a pesar del nombre historico, autentica cualquier rol) devuelve el `rol` del usuario junto con el token; el frontend usa ese valor para redirigir a `/app` o `/user` segun corresponda. Si un usuario no-admin intenta acceder a `/app` (o a cualquier endpoint que requiera admin), es redirigido automaticamente a `/user`.
+
 ## Arquitectura
 
 ```text
-Frontend web
+Frontend web (/app admin, /user cliente)
     |
     v
 LicenseController
@@ -45,11 +72,14 @@ LicenseController
     +--> OfflineValidationService -> RedirectService
     |
     +--> RevocationService
+    |
+    +--> db/repository.py --------> PostgreSQL (persistencia real)
+    +--> db/auth.py ---------------> bcrypt + JWT (autenticacion y roles)
 ```
 
 Modulos principales:
 
-- `src/pqlicense/license_controller.py`: endpoints HTTP y aliases de compatibilidad.
+- `src/pqlicense/license_controller.py`: endpoints HTTP, aliases de compatibilidad, y logica de autorizacion por rol/duenio (`is_admin_token`, `identify_token`, `my_licenses`, `validate_owned_license`, `revoke_owned_license`).
 - `src/pqlicense/license_service.py`: creacion de payloads `pqlicense/v2`.
 - `src/pqlicense/crypto_service.py`: orquestacion de firmas.
 - `src/pqlicense/classical_provider.py`: provider Ed25519.
@@ -61,7 +91,11 @@ Modulos principales:
 - `src/pqlicense/canonical.py`: JSON canonico para datos firmados.
 - `src/pqlicense/core.py`: fachada compatible con la API anterior.
 - `src/pqlicense/cli.py`: comandos de consola.
-- `src/pqlicense/server.py`: API HTTP online.
+- `src/pqlicense/server.py`: API HTTP online, rutas estaticas (`/app`, `/user`, `/login`) y endpoints REST.
+- `db/connection.py`: pool de conexion SQLAlchemy a PostgreSQL.
+- `db/repository.py`: capa de acceso a datos (licencias, historial, cancelaciones, revocaciones, dispositivos).
+- `db/auth.py`: registro, login, hash de contrasenas y JWT.
+- `db/schema.sql`: DDL de las 7 tablas.
 - `tests/test_license_system.py`: pruebas del flujo principal.
 
 ## Requisitos
@@ -72,6 +106,9 @@ Dependencias principales:
 
 - `cryptography`: firma clasica Ed25519.
 - `pqcrypto`: firma postcuantica ML-DSA-65.
+- `sqlalchemy` + `psycopg2` (o driver equivalente): conexion a PostgreSQL.
+- `bcrypt`: hash de contrasenas.
+- `pyjwt`: generacion y verificacion de tokens JWT.
 
 Instalacion recomendada en cualquier computadora:
 
@@ -91,6 +128,21 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+### Base de datos
+
+Se requiere PostgreSQL 18 corriendo localmente con una base llamada `reto_tendencias`. Aplica el esquema:
+
+```powershell
+psql -U postgres -d reto_tendencias -f db/schema.sql
+```
+
+Variables de entorno relevantes (ver `.env.example`):
+
+```text
+PQLICENSE_JWT_SECRET=una-clave-larga-y-secreta
+PQLICENSE_JWT_EXPIRES_MINUTES=120
+```
+
 ## Frontend presentable
 
 Iniciar la aplicacion web:
@@ -105,37 +157,51 @@ Abrir en el navegador:
 http://127.0.0.1:8090
 ```
 
-Guia rapida de uso:
+Guia rapida de uso (como administrador):
 
 1. Entra con el administrador demo:
-   - Usuario: `admin`
+   - Correo: `admin@reto-tendencias.local`
    - Clave: `admin123`
-2. Genera una licencia firmada.
+2. Genera una licencia firmada, asociando el correo real de un cliente registrado en el campo "Cliente" para que quede ligada a su cuenta.
 3. Presiona `Validar` para comprobar firmas, expiracion, revocacion y redireccion.
 4. Revisa la tabla `Licencias emitidas`.
 5. Presiona `Revocar` para cancelar la licencia.
-6. Revisa la tabla `Revocaciones`.
+6. Revisa las tablas `Historial` y `Cancelaciones`.
 
-Desde el panel puedes:
+Guia rapida de uso (como cliente final, rol Individual/Empresa):
+
+1. Registra una cuenta desde `/login` (pestana de registro), o usa una ya creada.
+2. Inicia sesion — el sistema te redirige automaticamente a `/user`.
+3. Consulta tus licencias propias en la tabla "Mis licencias".
+4. Presiona `Validar` sobre cualquiera de tus licencias para revisar el estado de sus firmas.
+5. Presiona `Revocar` si deseas cancelar una licencia activa (pide confirmacion antes de ejecutar).
+
+Desde el panel de administrador puedes:
 
 - Iniciar sesion como administrador.
 - Generar una licencia firmada.
 - Validar la licencia.
 - Revocar la licencia.
 - Regenerar claves.
-- Ver tabla de licencias emitidas.
-- Ver tabla de revocaciones.
+- Ver tabla de licencias emitidas, historial de validaciones y cancelaciones (conectadas a PostgreSQL).
+- Descargar la lista de revocacion (CRL) para validacion offline.
 - Seleccionar modo de firma: hibrido, clasico legado o postcuantico futuro.
 - Agregar plan y huella de dispositivo.
 - Ver el JSON de la licencia y la redireccion resultante.
 - Ver detalles de verificacion de firma clasica y firma postcuantica.
+
+Desde el panel de usuario final puedes:
+
+- Ver unicamente las licencias propias (filtradas por duenio real en la base de datos).
+- Validar cualquiera de tus licencias sin necesidad de pegar JSON manualmente.
+- Revocar una licencia propia, con confirmacion previa.
 
 El frontend usa el mismo backend de validacion que la API y guarda claves/revocaciones de demostracion en `demo_output/`.
 
 Credenciales admin por defecto para demo:
 
 ```text
-usuario: admin
+correo: admin@reto-tendencias.local
 clave: admin123
 ```
 
@@ -160,9 +226,10 @@ Este proyecto esta preparado para publicarse sin datos locales:
 
 - `demo_output/` queda ignorado porque contiene claves, licencias y revocaciones generadas al correr la app.
 - `__pycache__/`, entornos virtuales y archivos de editor quedan ignorados.
-- `.env.example` muestra variables configurables sin incluir secretos reales.
+- `.env.example` muestra variables configurables sin incluir secretos reales, incluyendo `PQLICENSE_JWT_SECRET`.
 - No se requiere ninguna ruta local especifica de la computadora original.
-- `requirements.txt` instala `pqcrypto` para activar ML-DSA-65 real.
+- `requirements.txt` instala `pqcrypto` para activar ML-DSA-65 real, ademas de `sqlalchemy`, `bcrypt` y `pyjwt`.
+- Ninguna contrasena ni clave privada se sube al repositorio; las contrasenas de usuarios se almacenan como hash bcrypt en la base de datos local de cada quien.
 
 Antes de subir, ejecuta:
 
@@ -219,15 +286,33 @@ Iniciar API online:
 python run.py serve --keys keys.json --product-id app-pro --revocations revocations.json --port 8080
 ```
 
-Endpoints:
+## Endpoints
 
-- `POST /api/licenses/generate`: genera licencia `pqlicense/v2`.
-- `POST /api/licenses/validate`: valida online/offline con firmas, expiracion, dispositivo y revocacion.
-- `POST /api/licenses/{id}/cancel`: revoca manualmente una licencia.
-- `GET /api/licenses`: lista licencias emitidas, requiere admin.
-- `GET /api/licenses/revocations`: devuelve la lista de revocacion firmada.
+Autenticacion y registro:
+
+- `POST /api/auth/register`: registra un usuario nuevo (Individual, Empresa o Admin).
+- `POST /api/admin/login`: autentica cualquier rol y devuelve token JWT, rol y nombre.
+
+Panel administrador (requieren token con rol Admin):
+
+- `POST /api/licenses/generate`: genera licencia `pqlicense/v2` y la persiste en PostgreSQL, ligada al usuario correspondiente por correo.
+- `POST /api/licenses/{id}/cancel`: revoca manualmente una licencia (cualquiera, no solo propias).
+- `GET /api/licenses`: lista todas las licencias emitidas.
+- `GET /api/historial`: historial de validaciones.
+- `GET /api/cancelaciones`: historial de cancelaciones.
+- `GET /api/licenses/revocations`: devuelve la lista de revocacion firmada (CRL).
+- `POST /api/reset-keys`: regenera el par de claves del sistema.
+
+Panel de usuario final (requieren token valido de cualquier rol; el sistema verifica duenio):
+
+- `GET /api/my-licenses`: lista las licencias del usuario autenticado.
+- `POST /api/my-licenses/validate`: revalida una licencia propia por su codigo, usando el documento completo guardado al emitirla.
+- `POST /api/my-licenses/cancel`: revoca una licencia propia (verifica duenio antes de ejecutar; queda registrada la cancelacion con el usuario responsable).
+
+Publicos (sin autenticacion):
+
+- `POST /api/licenses/validate`: valida online/offline con firmas, expiracion, dispositivo y revocacion, a partir del JSON completo de la licencia.
 - `GET /api/licenses/state`: devuelve estado publico del sistema sin claves privadas.
-- `POST /api/admin/login`: autentica administrador y devuelve token temporal.
 
 Aliases de compatibilidad:
 
@@ -279,13 +364,18 @@ Las licencias usan `pqlicense/v2`:
 }
 ```
 
+El documento completo (`schema` + `payload` + `signatures`) se persiste integro en la columna `payload` de la tabla `licencias`, ademas de guardarse por separado en `firma_postcuantica` y `firma_clasica` para consultas rapidas. Esto permite revalidar una licencia despues de emitida sin depender de que el cliente conserve el archivo original.
+
 ## Notas de seguridad
 
 - Las claves privadas nunca se envian al frontend.
 - Las respuestas de estado solo incluyen claves publicas.
-- Generar, listar, revocar y regenerar claves requiere token admin.
+- Generar, listar, revocar (por admin) y regenerar claves requiere token con rol Admin.
+- Un usuario Individual/Empresa solo puede ver, validar y revocar licencias de las que es duenio; cualquier intento sobre licencias de otro usuario responde con error de autorizacion.
+- Las contrasenas se almacenan con hash bcrypt; nunca en texto plano.
+- Los tokens JWT expiran automaticamente segun `PQLICENSE_JWT_EXPIRES_MINUTES`.
 - `demo_output/` esta ignorado por Git porque contiene claves y revocaciones locales.
-- Para produccion, las claves privadas deben vivir en un almacén seguro o HSM/KMS.
+- Para produccion, las claves privadas deben vivir en un almacén seguro o HSM/KMS, y `PQLICENSE_JWT_SECRET` debe definirse fuera del codigo mediante un gestor de secretos.
 - La revocacion offline depende de una lista firmada reciente; si el cliente nunca vuelve a conectarse, no puede conocer cancelaciones nuevas.
 - El provider `ML-DSA-65` usa `pqcrypto`; para produccion formal se debe validar la libreria, version, plataforma y politica de manejo de claves.
 - Se recomienda rotacion de claves y versionado por `key_id`.
@@ -300,4 +390,4 @@ Las pruebas cubren licencia valida, licencia alterada, vencimiento, revocacion f
 
 ## Siguiente paso para produccion
 
-Endurecer despliegue: usar HTTPS, una base de datos real, almacenamiento seguro de claves, rotacion por `key_id`, logs de auditoria y credenciales admin fuera del codigo mediante un gestor de secretos.
+Endurecer despliegue: usar HTTPS, migraciones formales de base de datos, almacenamiento seguro de claves, rotacion por `key_id`, logs de auditoria, y credenciales/secretos fuera del codigo mediante un gestor de secretos dedicado (HSM/KMS/vault). Evaluar tambien si el flujo de autoservicio (usuarios generando sus propias licencias) se incorpora, y bajo que reglas de limite y validacion.
