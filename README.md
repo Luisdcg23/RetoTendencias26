@@ -422,6 +422,6 @@ python -m unittest discover -s tests -v
 
 Las pruebas cubren licencia valida, licencia alterada, vencimiento, revocacion firmada, lista de revocacion manipulada, endpoints nuevos, aliases anteriores, modos de firma, ML-DSA-65 con `pqcrypto`, login admin, listados y proteccion contra exposicion de claves privadas.
 
-## Siguiente paso para produccion
+## Siguiente pasos (A Futuro)
 
 Endurecer despliegue: usar HTTPS, migraciones formales de base de datos, almacenamiento seguro de claves, rotacion por `key_id`, logs de auditoria, y credenciales/secretos fuera del codigo mediante un gestor de secretos dedicado (HSM/KMS/vault).
